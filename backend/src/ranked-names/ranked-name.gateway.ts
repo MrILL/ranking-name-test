@@ -13,6 +13,7 @@ import { UsePipes } from '@nestjs/common/decorators';
 import { RankedNamesService } from './ranked-names.service';
 import { MutateRankedNameDto, GetAllRankedNames } from './dtos';
 import { Logger } from '@nestjs/common/services';
+import { NotFoundException } from '@nestjs/common';
 
 // TODO FAR BEYOND exception filter
 @UsePipes(
@@ -32,18 +33,31 @@ export class RankedNamesGateway {
 
   constructor(private readonly rankedNamesService: RankedNamesService) {}
 
+  private async getAll(client: Socket, payload?: GetAllRankedNames) {
+    try {
+      return await this.rankedNamesService.getAll(payload);
+    } catch (e) {
+      if (e instanceof NotFoundException) {
+        return [];
+      } else {
+        client.emit('error', e);
+        throw new WsException(e);
+      }
+    }
+  }
+
   @SubscribeMessage('connection')
   async handleConnection(client: Socket) {
     this.logger.log('Connected', client.id);
     // TODO handle not found
-    const rankedNames = await this.rankedNamesService.getAll();
+
+    const rankedNames = await this.getAll(client);
     client.emit('ranked-names-updated', rankedNames);
   }
 
   @SubscribeMessage('ranked-names:get-all')
   async handleGetAllRankedNames(client: Socket, payload?: GetAllRankedNames) {
-    // TODO handle not found
-    const rankedNames = await this.rankedNamesService.getAll(payload);
+    const rankedNames = await this.getAll(client, payload);
     client.emit('ranked-names-updated', rankedNames);
 
     return rankedNames;
@@ -74,7 +88,7 @@ export class RankedNamesGateway {
       return;
     }
 
-    const rankedNames = await this.rankedNamesService.getAll();
+    const rankedNames = await this.getAll(client);
     this.server.emit('ranked-names-updated', rankedNames);
     return rankedNames;
   }
@@ -97,7 +111,7 @@ export class RankedNamesGateway {
       return;
     }
 
-    const rankedNames = await this.rankedNamesService.getAll();
+    const rankedNames = await this.getAll(client);
     this.server.emit('ranked-names-updated', rankedNames);
     return rankedNames;
   }
@@ -123,7 +137,7 @@ export class RankedNamesGateway {
       return;
     }
 
-    const rankedNames = await this.rankedNamesService.getAll();
+    const rankedNames = await this.getAll(client);
     this.server.emit('ranked-names-updated', rankedNames);
     return rankedNames;
   }
@@ -145,7 +159,7 @@ export class RankedNamesGateway {
       return;
     }
 
-    const rankedNames = await this.rankedNamesService.getAll();
+    const rankedNames = await this.getAll(client);
     this.server.emit('ranked-names-updated', rankedNames);
     return rankedNames;
   }
