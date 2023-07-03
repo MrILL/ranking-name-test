@@ -24,6 +24,17 @@ export const Item = ({
       whileDrag={{
         cursor: 'grabbing',
       }}
+      initial={{
+        opacity: 0,
+        y: 50,
+      }}
+      animate={{
+        opacity: 1,
+        y: 0,
+      }}
+      exit={{
+        opacity: 0,
+      }}
       onDragEnd={() => onDragEnd()}
       className="rounded-xl bg-orange-50 shadow p-2 items-center cursor-grab mb-2 flex justify-between group"
     >
