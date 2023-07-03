@@ -1,8 +1,14 @@
-import { Column, Entity, PrimaryColumn } from 'typeorm';
+import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
 
 @Entity()
 export class RankedName {
-  @PrimaryColumn({ unique: true })
+  @PrimaryGeneratedColumn('identity', {
+    name: 'id',
+    generatedIdentity: 'BY DEFAULT',
+  })
+  id: number;
+
+  @Column({ unique: true })
   name: string;
 
   @Column({ unique: true, nullable: true })
