@@ -67,11 +67,14 @@ export class RankedNamesService {
   ): Promise<RankedName> {
     const checkUnique = await this.rankedNameRepository.findOneBy({ name });
     if (checkUnique) {
-      throw new BadRequestException(`Ranked name ${name} already exists`);
+      const errorMessage = `Ranked name ${name} already exists`;
+      this.logger.error(`Failed to create entity: ${errorMessage}`);
+      throw new BadRequestException(errorMessage);
     }
 
     const errors = await this.validateAdd({ name, prev, next });
     if (errors.length) {
+      this.logger.error('Unable to add entity');
       throw new BadRequestException({
         errors,
       });
@@ -98,10 +101,14 @@ export class RankedNamesService {
         next,
       });
       res = await this.rankedNameRepository.save(newRankedName);
+      this.logger.log(
+        `Successfully inserted ranked name: ${JSON.stringify(newRankedName)}`,
+      );
 
       await queryRunner.commitTransaction();
     } catch (e) {
       await queryRunner.rollbackTransaction();
+      this.logger.error('Unexpected error', e.stack);
       throw e;
     } finally {
       await queryRunner.release();
@@ -115,12 +122,20 @@ export class RankedNamesService {
     order = 'ASC',
     startId,
   }: GetAllRankedNames = {}): Promise<RankedName[]> {
+    this.logger.log(
+      `Requested to get all ranked names ${
+        startId ? `starting from id:${startId}` : ''
+      }`,
+    );
+
     if (!startId) {
       const first = await this.rankedNameRepository.findOneBy({
         next: IsNull(),
       });
       if (!first) {
-        throw new NotFoundException('Ranked names not found');
+        const errorMessage = 'Ranked names not found';
+        this.logger.log(errorMessage);
+        throw new NotFoundException(errorMessage);
       }
       startId = first.id;
     }
@@ -147,7 +162,9 @@ export class RankedNamesService {
       rawQuery,
     );
     if (!rankedNames.length) {
-      throw new NotFoundException('Ranked names not found');
+      const errorMessage = 'Ranked names not found';
+      this.logger.log(errorMessage);
+      throw new NotFoundException(errorMessage);
     }
 
     this.logger.log(`Fetched ${rankedNames.length} Ranked names`);
@@ -157,6 +174,8 @@ export class RankedNamesService {
   }
 
   async add(payload: MutateRankedNameDto): Promise<RankedName> {
+    this.logger.log('Request to insert ranked name');
+
     return this._add(payload);
   }
 
@@ -164,6 +183,8 @@ export class RankedNamesService {
     id: number,
     { prev, next, name }: MutateRankedNameDto,
   ): Promise<RankedName> {
+    this.logger.log('Request to update ranked name');
+
     const oldRankedName = await this.rankedNameRepository.findOneBy({
       id,
     });
@@ -179,7 +200,6 @@ export class RankedNamesService {
       prevRankedName.name === prev &&
       oldRankedName.next === next
     ) {
-      // TODO do nothing if it's have the save place
       if (oldRankedName.name === name) {
         return oldRankedName;
       } else {
@@ -203,13 +223,21 @@ export class RankedNamesService {
       throw e;
     }
 
+    this.logger.log(
+      `Successfully update ranked name id:${id} to ${JSON.stringify(res)}`,
+    );
+
     return res;
   }
 
   async rename(id: number, newName: string): Promise<RankedName> {
+    this.logger.log(`Request to rename id:${id} to ${newName}`);
+
     const rankedName = await this.rankedNameRepository.findOneBy({ id });
     if (!rankedName) {
-      throw new NotFoundException(`Ranked name id:${id} is not exists`);
+      const errorMessage = `Ranked name id:${id} is not exists`;
+      this.logger.error(errorMessage);
+      throw new NotFoundException(errorMessage);
     }
 
     const queryRunner = this.dataSource.createQueryRunner();
@@ -231,23 +259,29 @@ export class RankedNamesService {
       res = await this.rankedNameRepository.save(rankedName);
 
       await queryRunner.commitTransaction();
-      this.logger.log(`Rename id:${id} to ${newName}`);
     } catch (e) {
       await queryRunner.rollbackTransaction();
+      this.logger.error('Unexpected error', e.stack);
       throw e;
     } finally {
       await queryRunner.release();
     }
 
+    this.logger.log(`Successfully renamed id:${id} to ${newName}`);
+
     return res;
   }
 
   async remove(id: number): Promise<RankedName> {
+    this.logger.log(`Request to remove ranked name id:${id}`);
+
     const currentRankedName = await this.rankedNameRepository.findOneBy({
       id,
     });
     if (!currentRankedName) {
-      throw new NotFoundException(`Ranked name id:${id} is not exists`);
+      const errorMessage = `Ranked name id:${id} is not exists`;
+      this.logger.error(errorMessage);
+      throw new NotFoundException(errorMessage);
     }
 
     const prevRankedName = await this.rankedNameRepository.findOneBy({
@@ -260,6 +294,8 @@ export class RankedNamesService {
       prevRankedName.next = currentRankedName.next;
       await this.rankedNameRepository.save(prevRankedName);
     }
+
+    this.logger.log(`Successfully removed id:${id}`);
 
     return currentRankedName;
   }

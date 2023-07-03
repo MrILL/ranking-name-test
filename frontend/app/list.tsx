@@ -50,10 +50,12 @@ const Item = ({
         </div>
         <input
           key={id}
+          size={0}
+          type="text"
           value={name}
           onChange={(e) => onRename(e.currentTarget.value)}
           onBlur={() => onRenameSubmit(name)}
-          className="border-none bg-transparent p-0 m-0 outline-none font-inherit text-inherit truncate"
+          className="border-none bg-transparent p-0 m-0 outline-none font-inherit text-inherit truncate min-w-24 w-full"
         />
       </div>
       <button
