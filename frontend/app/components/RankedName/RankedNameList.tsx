@@ -1,10 +1,9 @@
-'use client'
-
 import React from 'react'
 import { Reorder } from 'framer-motion'
 import { io } from 'socket.io-client'
 
-import { Name } from '@/types'
+import { Name, RawListUnit } from './types'
+import { Item } from './RankedNameItem'
 
 const mock: Name[] = ['MrILL', 'Lepeico', 'Anatoliy', 'Anton']
 
@@ -13,92 +12,35 @@ export const socket = io(URL, {
   autoConnect: false,
 })
 
-type RawListUnit = {
-  id: number
-  name: Name
-}
-
-const Item = ({
-  rank,
-  data,
-  onDragEnd,
-  onRename,
-  onRenameSubmit,
-  onDelete,
-}: {
-  rank: number
-  data: RawListUnit
-  onDragEnd: () => void
-  onRename: (newName: string) => void
-  onRenameSubmit: (name: string) => void
-  onDelete: () => void
-}) => {
-  const { id, name } = data
-
-  return (
-    <Reorder.Item
-      value={data}
-      whileDrag={{
-        cursor: 'grabbing',
-      }}
-      onDragEnd={() => onDragEnd()}
-      className="rounded-xl bg-orange-50 shadow p-2 items-center cursor-grab mb-2 flex justify-between group"
-    >
-      <div className="flex gap-3 items-center">
-        <div className="h-7 w-7 flex items-center justify-center text-sm font-bold bg-orange-500 text-white rounded-lg">
-          {rank}
-        </div>
-        <input
-          key={id}
-          size={0}
-          type="text"
-          value={name}
-          onChange={(e) => onRename(e.currentTarget.value)}
-          onBlur={() => onRenameSubmit(name)}
-          className="border-none bg-transparent p-0 m-0 outline-none font-inherit text-inherit truncate min-w-24 w-full"
-        />
-      </div>
-      <button
-        className="h-7 w-7 flex items-center justify-center rounded-lg transition opacity-0 group-hover:opacity-100 text-orange-800 hover:bg-orange-500/10"
-        onClick={() => onDelete()}
-      >
-        &#10006;
-      </button>
-    </Reorder.Item>
-  )
-}
-
-export const List = () => {
+export const RankedNameList = () => {
   const [list, setList] = React.useState<RawListUnit[]>([])
   const [newName, setNewName] = React.useState('')
   const [error, setError] = React.useState<string | undefined>(undefined)
 
   React.useEffect(() => {
     socket.on('connect', () => {
-      console.log('connect')
-      // socket.emit('ranked-names:get-all')
+      console.log('ws: connect')
     })
 
-    socket.on('ranked-names-updated', (data) => {
-      // TODO types
-      console.log(data)
-      const names = data.map(({ id, name }: any) => ({
+    socket.on('ranked-names-updated', (data: RawListUnit[]) => {
+      console.log('ws: ranked-names-updated', data)
+
+      const names = data.map(({ id, name }) => ({
         id,
         name,
       }))
-      console.log(names)
+
       setList(names)
     })
 
     socket.on('error', (errors) => {
-      console.log('errors', errors)
+      console.log('ws: error', errors)
     })
 
     socket.connect()
   }, [])
 
   const handleReorder = (newList: RawListUnit[]) => {
-    console.log('reorder', newList)
     setList(newList)
   }
 
@@ -136,7 +78,6 @@ export const List = () => {
       },
     })
   }
-  console.log(list)
 
   const handleChange = (name: string) => {
     setNewName(name)
@@ -146,7 +87,6 @@ export const List = () => {
     } else {
       setError(undefined)
     }
-    // TODO call backend to save state
   }
 
   const handleRename = (id: number, name: string) => {
@@ -165,10 +105,6 @@ export const List = () => {
   }
 
   const handleDelete = (id: number) => {
-    // const updatedList = [...list]
-    // updatedList.splice(index, 1)
-    // setList(updatedList)
-
     socket.emit('ranked-names:remove', {
       id,
     })
@@ -217,7 +153,6 @@ export const List = () => {
         <input
           placeholder="Name"
           className={`rounded-xl w-80 bg-orange-50 px-4 py-2 cursor-grab placeholder:text-orange-800/50 !outline-none transition hover:shadow-md shadow border ${
-            // TODO rewrite in classnames
             error
               ? 'border-red-500 text-red-500 bg-red-50'
               : 'border-transparent'
