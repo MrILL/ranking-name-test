@@ -1,3 +1,3 @@
 'use client'
 
-export * from './RankedNameList'
+export * from './RankedNamePage'
